@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+scikit-learn
+pandas
+joblib
+python-dotenv
+requests
+python-dotenv
+requests
+
+
+#  gt means greater than

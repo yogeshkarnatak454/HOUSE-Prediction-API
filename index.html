@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>House Price Predictor</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #5f1ca6;
+        margin: 0;
+        padding: 24px;
+        color: #1f2937;
+      }
+      .card {
+        max-width: 760px;
+        margin: 0 auto;
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      }
+      h1 {
+        margin-top: 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      label {
+        display: flex;
+        flex-direction: column;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      input {
+        margin-top: 6px;
+        padding: 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+      }
+      button {
+        margin-top: 16px;
+        padding: 10px 16px;
+        border: none;
+        border-radius: 8px;
+        background: #2563eb;
+        color: white;
+        cursor: pointer;
+        font-size: 15px;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+      .result {
+        margin-top: 18px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        padding: 14px;
+        border-radius: 8px;
+      }
+      .llm-explanation {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #bfdbfe;
+      }
+      .llm-explanation strong {
+        color: #1e40af;
+        display: block;
+        margin-bottom: 8px;
+      }
+      .llm-explanation p {
+        color: #374151;
+        line-height: 1.6;
+        margin: 8px 0;
+      }
+      .price-section {
+        background: #dcfce7;
+        border: 1px solid #86efac;
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+      }
+      .price-section .label {
+        font-size: 12px;
+        color: #16a34a;
+        font-weight: 600;
+      }
+      .price-section .price {
+        font-size: 28px;
+        color: #15803d;
+        font-weight: bold;
+        margin: 6px 0;
+      }
+      .analysis-section {
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+        padding: 12px;
+        border-radius: 6px;
+      }
+      .analysis-section .label {
+        font-size: 12px;
+        color: #92400e;
+        font-weight: 600;
+      }
+      .analysis-section .text {
+        color: #78350f;
+        line-height: 1.6;
+        margin-top: 8px;
+        font-size: 14px;
+      }
+      .analysis-item {
+        margin: 10px 0;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.5);
+        border-left: 3px solid #d97706;
+        border-radius: 4px;
+      }
+      .analysis-item strong {
+        color: #92400e;
+        display: block;
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+      .analysis-item span {
+        color: #78350f;
+        font-size: 13px;
+      }
+      .array-item {
+        background: rgba(255, 255, 255, 0.5);
+        padding: 6px 8px;
+        margin: 4px 0;
+        border-left: 2px solid #d97706;
+        border-radius: 3px;
+        font-size: 13px;
+      }
+      .hint {
+        font-size: 13px;
+        color: #6b7280;
+      }
+      @media (max-width: 700px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>🏠 House Price Predictor with AI Insights</h1>
+      <p class="hint">Enter the house feature values and get an estimated price with AI explanation.</p>
+      <form id="prediction-form">
+        <div class="grid">
+          <label>Median Income <input name="MedInc" type="number" step="0.01" value="3.5" /></label>
+          <label>House Age <input name="HouseAge" type="number" step="0.01" value="20" /></label>
+          <label>Average Rooms <input name="AveRooms" type="number" step="0.01" value="5.2" /></label>
+          <label>Average Bedrooms <input name="AveBedrms" type="number" step="0.01" value="1.0" /></label>
+          <label>Population <input name="Population" type="number" step="0.01" value="1200" /></label>
+          <label>Average Occupancy <input name="AveOccup" type="number" step="0.01" value="2.5" /></label>
+          <label>Latitude <input name="Latitude" type="number" step="0.01" value="37.77" /></label>
+          <label>Longitude <input name="Longitude" type="number" step="0.01" value="-122.42" /></label>
+        </div>
+        <button type="submit">Predict Price & Get AI Analysis</button>
+      </form>
+      <div id="result" class="result">Waiting for input...</div>
+    </div>
+
+    <script>
+      const form = document.getElementById('prediction-form');
+      const result = document.getElementById('result');
+
+      function renderAnalysis(data) {
+        let html = '';
+        
+        for (const [key, value] of Object.entries(data)) {
+          const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          
+          if (Array.isArray(value)) {
+            html += `<div class="analysis-item">
+              <strong>${displayKey}:</strong>
+              ${value.map(item => `<div class="array-item">• ${item}</div>`).join('')}
+            </div>`;
+          } else if (typeof value === 'object' && value !== null) {
+            html += `<div class="analysis-item">
+              <strong>${displayKey}:</strong>
+              ${Object.entries(value).map(([k, v]) => `<div style="margin-left: 12px; margin-top: 4px;"><strong style="color: #a16207;">${k}:</strong> ${Array.isArray(v) ? v.join(', ') : v}</div>`).join('')}
+            </div>`;
+          } else {
+            html += `<div class="analysis-item">
+              <strong>${displayKey}:</strong>
+              <span>${value}</span>
+            </div>`;
+          }
+        }
+        return html;
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = Object.fromEntries(new FormData(form).entries());
+        
+        const payload = {
+          house: {
+            MedInc: Number(formData.MedInc),
+            HouseAge: Number(formData.HouseAge),
+            AveRooms: Number(formData.AveRooms),
+            AveBedrms: Number(formData.AveBedrms),
+            Population: Number(formData.Population),
+            AveOccup: Number(formData.AveOccup),
+            Latitude: Number(formData.Latitude),
+            Longitude: Number(formData.Longitude)
+          }
+        };
+
+        result.innerHTML = '<div style="text-align: center; color: #6b7280;"><strong>⏳ Predicting and analyzing...</strong></div>';
+
+        try {
+          const response = await fetch('/predict-with-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          const resultData = await response.json();
+          if (!response.ok) {
+            throw new Error(resultData.detail || 'Prediction failed');
+          }
+
+          result.innerHTML = `
+            <div class="price-section">
+              <div class="label">💰 PREDICTED PRICE</div>
+              <div class="price">${resultData.predicted_price}</div>
+              <div style="font-size: 12px; color: #16a34a;">Price Range: ${resultData.confidence_range}</div>
+            </div>
+            <div class="analysis-section">
+              <div class="label">🤖 MARKET ANALYSIS</div>
+              ${renderAnalysis(resultData.llm_analysis)}
+            </div>
+          `;
+        } catch (error) {
+          result.innerHTML = `<div style="color: #dc2626; padding: 12px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px;">❌ Error: ${error.message}</div>`;
+        }
+      });
+    </script>
+  </body>
+</html>
